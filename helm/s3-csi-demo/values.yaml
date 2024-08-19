@@ -1,0 +1,54 @@
+# Default values for s3-csi-demo.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+storageClass:
+  name: s3-storageclass
+  provisioner: s3.csi.aws.com # Provisioner for AWS S3
+  parameters:
+    type: standard
+
+persistentVolume:
+  name: s3-pv
+  capacity:
+    storageSize: 5Gi
+  volumeMode: Filesystem
+  accessModes: ReadWriteMany # supported options: ReadWriteMany / ReadOnlyMany
+  storageClassName: s3-storageclass
+  mountOptions:
+    - allow-delete
+    - region ap-southeast-2
+    - prefix s3-csi/  # prefix inside the Amazon S3 bucket whose contents will be exposed by the S3 CSI driver
+  persistentVolumeReclaimPolicy: Retain
+  csi:
+    driver: s3.csi.aws.com # required
+    volumeHandle: mys3bucket-volume # handle to reference the volume with
+    bucketName: mys3bucket # the bucket name whose contents will be exposed by the S3 CSI driver 
+
+persistentVolumeClaim:
+  name: s3-pvc
+  accessModes: ReadWriteMany # supported options: ReadWriteMany / ReadOnlyMany
+  storageClassName: s3-storageclass # required for static provisioning
+  resources:
+    requests:
+      storage: 5Gi
+    volumeName: s3-pv
+  
+nginx:
+  name: nginx
+  labels:
+    app: nginx
+  spec:
+    containers:
+      name: nginx
+      image: nginx:1.27.0-perl
+      ports:
+        containerPort: 80
+        protocol: TCP
+      volumeMount:
+        name: s3-volume
+        mountPath: /s3
+    volumes:
+      name: s3-volume
+      persistentVolumeClaim:
+        claimName: s3-pvc
